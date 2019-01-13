@@ -15,6 +15,7 @@ connection.connect(function (err) {
 })
 
 function menu() {
+    process.stdout.write('\033c');
     inquirer.prompt([
         {
             type: "list",
@@ -87,8 +88,13 @@ function addToInventory() {
             console.log("Stock: " + res[i].stock_quantity);
             console.log("---------------------------");
         }
+
+        addQuestions();
     });
 
+}
+
+function addQuestions() {
     inquirer.prompt([
         {
             type: "input",
@@ -97,23 +103,106 @@ function addToInventory() {
         },
         {
             type: "input",
-            name: "add",
+            name: "addStock",
             message: "How much would you like to add?"
         }
     ])
         .then(answers => {
+            var item = parseInt(answers.itemId);
+            var addStock = parseInt(answers.addStock);
+            console.log("Here is answer 1: " + item)
 
-            console.log("Here are the answers: " + answers);
-            // connection.query("UPDATE `products` SET ? WHERE ?",
-            //     {
-            //         stock_quantity: 
-            //     }
-            //     , function (err, res) {
-            //         if (err) throw err;
+            connection.query("SELECT * FROM `products` WHERE ?", { item_id: item }, function (err, res) {
+                if (err) throw err;
+
+                // console.log("Stock of " + res[0].product_name + "is " + res[0].stock_quantity)
+                connection.query("UPDATE `products` SET ? WHERE ?",
+                    [
+                        {
+                            stock_quantity: res[0].stock_quantity + addStock
+                        },
+                        {
+                            item_id: item,
+                        }
+                    ]
+                    , function (err, res) {
+                        if (err) throw err;
+
+                        connection.query("SELECT * FROM `products` WHERE ?",
+                            {
+                                item_id: item,
+                            }, function (err, res) {
+                                if (err) throw err;
+
+                                console.log("--------------------------");
+                                console.log(res[0].product_name + " has been updated!")
+                                console.log(res[0].product_name + " inventory: " + res[0].stock_quantity)
+                                console.log("--------------------------");
+                            })
+
+                    })
+            })
 
 
-            //     })
 
         });
 
+}
+
+function addNewProduct() {
+    inquirer.prompt([
+        {
+            type: "input",
+            message: "What product would you like to add?",
+            name: "productName"
+        },
+        {
+            type: "input",
+            message: "What department does your product belong in?",
+            name: "productDepartment"
+        },
+        {
+            type: "input",
+            message: "What price would you like to set for your product?",
+            name: "productPrice"
+        },
+        {
+            type: "input",
+            message: "How much of your product is in stock?",
+            name: "productStock"
+        },
+
+    ])
+        .then(answers => {
+            var product = answers.productName;
+            var department = answers.productDepartment;
+            var price = answers.productPrice;
+            var stock = answers.productStock;
+
+
+            connection.query("INSERT INTO `products` SET ?",
+                {
+                    product_name: product,
+                    department_name: department,
+                    price: price,
+                    stock_quantity: stock
+                }, function (err, res) {
+                    if (err) throw err;
+
+                    connection.query("SELECT * FROM `products`", function (err, res) {
+                        if (err) throw err;
+
+                        for (i = 0; i < res.length; i++) {
+                            console.log("---------------------------");
+                            console.log("ID#: " + res[i].item_id);
+                            console.log("Product: " + res[i].product_name);
+                            console.log("Department: " + res[i].department_name);
+                            console.log("Price: " + res[i].price);
+                            console.log("Stock: " + res[i].stock_quantity);
+                            console.log("---------------------------");
+                        }
+                    })
+                })
+
+        });
 }
